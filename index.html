@@ -1,10 +1,327 @@
-<html>
+<!DOCTYPE html>
+<html lang="ko">
 <head>
-<title>KS 4차전</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --danger-color: #dc3545;
+            --light-gray: #f4f4f4;
+            --dark-gray: #aaa;
+            --border-color: #ddd;
+            --background-color: #fff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--light-gray);
+            margin: 0;
+            padding-top: 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            max-width: 500px;
+            width: 100%;
+            margin: 20px;
+            background: var(--background-color);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+        }
+
+        #task-form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        #task-input {
+            flex-grow: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-right: 10px;
+            box-sizing: border-box; /* 패딩이 너비에 포함되도록 설정 */
+        }
+
+        #task-form button {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #task-form button:hover {
+            background-color: #0056b3;
+        }
+
+        #task-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-item input[type="checkbox"] {
+            /* 커스텀 체크박스 */
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            margin-right: 12px;
+            cursor: pointer;
+            position: relative;
+            top: -1px;
+        }
+
+        .task-item input[type="checkbox"]:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        /* 체크마크 (::after 가상 요소 사용) */
+        .task-item input[type="checkbox"]:checked::after {
+            content: '✔';
+            color: white;
+            font-size: 14px;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .task-item span {
+            flex-grow: 1;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .task-item.completed span {
+            text-decoration: line-through;
+            color: var(--dark-gray);
+        }
+
+        .delete-btn {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0; /* 평소에는 안 보이게 */
+            transition: opacity 0.2s, background-color 0.2s;
+        }
+
+        .task-item:hover .delete-btn {
+            opacity: 1; /* 마우스 올리면 보이게 */
+        }
+
+        .delete-btn:hover {
+            background-color: #b22222;
+        }
+    </style>
 </head>
 <body>
-<h1>KS 4차전 승자는 과연 누구일까용</h1>
-<h4>우리팀 야구 아니면 다 재미꾸낭</h4>
+
+    <div class="app-container">
+        <h1>To-Do List</h1>
+        <form id="task-form">
+            <input type="text" id="task-input" placeholder="새 할 일을 입력하세요..." autocomplete="off" required>
+            <button type="submit">추가</button>
+        </form>
+        <ul id="task-list">
+            </ul>
+    </div>
+
+    <script>
+        // DOM 요소 가져오기
+        const taskForm = document.getElementById('task-form');
+        const taskInput = document.getElementById('task-input');
+        const taskList = document.getElementById('task-list');
+
+        // 할 일 목록 데이터 (배열)
+        let tasks = [];
+
+        // 1. 페이지 로드 시 localStorage에서 데이터 불러오기
+        document.addEventListener('DOMContentLoaded', loadTasks);
+
+        // 2. 폼 제출(할 일 추가) 이벤트 처리
+        taskForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // 폼의 기본 제출 동작(새로고침) 방지
+
+            const text = taskInput.value.trim(); // 입력값의 양쪽 공백 제거
+
+            if (text === '') {
+                alert('할 일을 입력하세요.');
+                return;
+            }
+
+            // 새 할 일 객체 생성
+            const task = {
+                id: Date.now(), // 고유 ID로 현재 시간 사용
+                text: text,
+                completed: false
+            };
+
+            // 데이터 배열에 추가
+            tasks.push(task);
+
+            // 화면에 렌더링
+            renderTask(task);
+
+            // localStorage에 저장
+            saveTasks();
+
+            // 입력창 비우기
+            taskInput.value = '';
+            taskInput.focus();
+        });
+
+        // 3. 할 일 목록(ul)에서 발생하는 클릭 이벤트 처리 (이벤트 위임)
+        taskList.addEventListener('click', function(e) {
+            const target = e.target; // 클릭된 요소
+            const li = target.closest('.task-item'); // 클릭된 요소에서 가장 가까운 .task-item 찾기
+
+            if (!li) return; // .task-item 내부가 아니면 무시
+
+            const id = Number(li.dataset.id); // li의 data-id 속성 값 가져오기
+
+            // 클릭된 요소가 체크박스일 때 (완료/미완료 토글)
+            if (target.type === 'checkbox') {
+                toggleTaskComplete(id, li);
+            }
+            // 클릭된 요소가 삭제 버튼일 때
+            else if (target.classList.contains('delete-btn')) {
+                deleteTask(id, li);
+            }
+        });
+
+        /**
+         * (Helper) 새 할 일을 화면에 렌더링하는 함수
+         * @param {object} task - { id, text, completed }
+         */
+        function renderTask(task) {
+            const li = document.createElement('li');
+            li.classList.add('task-item');
+            li.dataset.id = task.id; // 나중에 JS에서 식별하기 위한 ID
+
+            if (task.completed) {
+                li.classList.add('completed');
+            }
+
+            // innerHTML로 요소 구조 생성
+            li.innerHTML = `
+                <input type="checkbox" ${task.completed ? 'checked' : ''}>
+                <span>${escapeHTML(task.text)}</span>
+                <button class="delete-btn">삭제</button>
+            `;
+
+            taskList.appendChild(li);
+        }
+
+        /**
+         * (Helper) 할 일 완료/미완료 상태 변경
+         * @param {number} id - 토글할 태스크의 ID
+         * @param {HTMLElement} li - 토글할 <li> 요소
+         */
+        function toggleTaskComplete(id, li) {
+            // 1. 데이터(배열) 업데이트
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+            }
+
+            // 2. 화면(DOM) 업데이트
+            li.classList.toggle('completed');
+
+            // 3. localStorage 저장
+            saveTasks();
+        }
+
+        /**
+         * (Helper) 할 일 삭제
+         * @param {number} id - 삭제할 태스크의 ID
+         * @param {HTMLElement} li - 삭제할 <li> 요소
+         */
+        function deleteTask(id, li) {
+            if (confirm('정말 삭제하시겠습니까?')) {
+                // 1. 데이터(배열)에서 제거
+                tasks = tasks.filter(t => t.id !== id);
+
+                // 2. 화면(DOM)에서 제거
+                li.remove();
+
+                // 3. localStorage 저장
+                saveTasks();
+            }
+        }
+
+        /**
+         * (Helper) localStorage에 현재 'tasks' 배열 저장
+         */
+        function saveTasks() {
+            localStorage.setItem('todoTasks', JSON.stringify(tasks));
+        }
+
+        /**
+         * (Helper) localStorage에서 'tasks' 불러와 화면에 렌더링
+         */
+        function loadTasks() {
+            const savedTasks = localStorage.getItem('todoTasks');
+
+            if (savedTasks) {
+                tasks = JSON.parse(savedTasks);
+                tasks.forEach(task => renderTask(task));
+            }
+        }
+
+        /**
+         * (Helper) XSS 방지를 위한 HTML 이스케이프 함수
+         * @param {string} str - 사용자 입력 문자열
+         */
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, function(match) {
+                const map = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                };
+                return map[match];
+            });
+        }
+    </script>
 </body>
 </html>
+
 
